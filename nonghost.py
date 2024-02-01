@@ -3,8 +3,6 @@ import os
 import sys
 import argparse
 import subprocess
-from stem import Signal
-from stem.control import Controller
 
 banner = """-------------------------------------------
           \r[+] NonGhost - version 0.0 - by @n0n [+]
@@ -24,6 +22,18 @@ Available modes:
     python3 {sys.argv[0]} switch  # New tor exit node
     python3 {sys.argv[0]} install # Install NonGhost
 """
+
+def print_error(msg):
+	error = f"\033[91m{msg}\033[0m"
+	print(error)
+
+def check_requirements():
+	try:
+		from stem import Signal
+		from stem.control import Controller
+		return True
+	except ModuleNotFoundError:
+		return False
 
 def check_privs():
 	if os.getuid() == 0: return True
@@ -48,6 +58,14 @@ def write_resolv_conf():
 		resolv_file.write("nameserver 127.0.0.1\n")
 
 def start_nonghost():
+
+	if not check_requirements():
+		print_error("\n[-] Dependencies were missing.")
+		print_error(f"[-] Installing requirements first.")
+		install_nonghost()
+
+
+
 	print("[+] Starting nonghost")
 	write_tor_config()
 	write_resolv_conf()
@@ -145,10 +163,14 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	print(banner, end="")
-	if not args.mode or args.help:
-		print(help_message)
+
+	try:
+		if not check_privs():
+			print_error("[+] Run with sudo pls :)")
+		elif not args.mode or args.help:
+			print(help_message)
+		else:
+			modes[args.mode]()
+	except Exception as e:
+		print_error(e)
 		sys.exit()
-	elif not check_privs():
-		print("[+] Run with sudo :)")
-	else:
-		modes[args.mode]()
